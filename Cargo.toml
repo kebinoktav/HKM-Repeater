@@ -1,0 +1,16 @@
+[package]
+name = "auto_click"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+enigo = "0.6"
+device_query = "4.0"
+eframe = "0.29.0"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
