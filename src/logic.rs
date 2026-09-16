@@ -1,13 +1,16 @@
 use std::str::FromStr;
 use std::sync::atomic::Ordering::SeqCst;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::{thread, time::{Duration, Instant}};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use enigo::{Button, Direction::Click, Enigo, Key, Keyboard, Mouse};
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum Trigger {
     Key(Keycode),
     MouseLeft,
@@ -26,11 +29,12 @@ pub(crate) struct Data {
 
 pub(crate) fn parse_data(data: &str) -> Option<Trigger> {
     match data {
-        "m_left" | "ml" => Some(Trigger::MouseLeft),
-        "m_middle" | "mm" => Some(Trigger::MouseMiddle),
-        "m_right" | "mr" => Some(Trigger::MouseRight),
+        "m_left" | "ml" | "Mouse Left " => Some(Trigger::MouseLeft),
+        "m_middle" | "mm" | "Mouse Middle" => Some(Trigger::MouseMiddle),
+        "m_right" | "mr" | "Mouse Right" => Some(Trigger::MouseRight),
         "" => None,
-        _ => Keycode::from_str(&data.to_uppercase()).ok().map(Trigger::Key),
+        // jika bukan mouse tapi ada isinya, maka berarti adalah keycode
+        _ => Keycode::from_str(&data).ok().map(Trigger::Key),
     }
 }
 
@@ -74,8 +78,13 @@ impl Data {
         }
     }
 
-    pub(crate) fn get_input(&self) -> Option<Trigger> {
-        self.input.lock().unwrap().clone()
+    pub(crate) fn get_data_io(&self) -> Vec<Option<Trigger>> {
+        // data inromasi isi dari sel.input dan self.output
+        let data: Vec<Option<Trigger>> = vec![
+            self.input.lock().unwrap().clone(),
+            self.output.lock().unwrap().clone(),
+        ];
+        data
     }
 
     pub(crate) fn give_data(&self, input: &str, output: &str) {
@@ -104,26 +113,6 @@ impl Data {
         self.is_run.fetch_xor(true, Ordering::SeqCst);
     }
 
-    pub(crate) fn is_running(&self) -> bool {
-        self.is_run.load(Ordering::SeqCst)
-    }
-
-    pub(crate) fn sleep_interval(&self) {
-        let time = self.time.load(Ordering::SeqCst);
-        let option = self.time_opt.load(Ordering::SeqCst);
-
-        let duration = match option {
-            1 => Duration::from_hours(time),
-            2 => Duration::from_mins(time),
-            3 => Duration::from_secs(time),
-            4 => Duration::from_millis(time),
-            5 => Duration::from_micros(time),
-            6 => Duration::from_nanos(time),  
-            _ => Duration::from_millis(10),
-        };
-
-        thread::sleep(duration);
-    }
     pub(crate) fn get_interval(&self) -> Duration {
         let time = self.time.load(Ordering::SeqCst);
         let option = self.time_opt.load(Ordering::SeqCst);

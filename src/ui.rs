@@ -40,10 +40,10 @@ impl AutoClick {
 }
 
 impl Drop for AutoClick {
-    // untuk memastikan thread worker mati 
+    // untuk memastikan thread worker mati
     fn drop(&mut self) {
-         // set flag stop
-         self.data.stop();
+        // set flag stop
+        self.data.stop();
         if let Some(handle) = self.process_thread.take() {
             let _ = handle.join();
         }
@@ -73,53 +73,171 @@ impl eframe::App for AutoClick {
         egui::TopBottomPanel::top("top panel").show(ctx, |ui| {
             // click interval
             ui.horizontal(|ui| {
-                 ui.label(egui::RichText::new("Time: ").size(15.0));
-                 ui.add(egui::TextEdit::singleline(&mut self.string_time).desired_width(100.0));
-                 if ui.button("Confirm").clicked() {
-    match self.string_time.parse::<u64>() {
-        Ok(t) => {
-            self.data.give_time(t);
-            self.data.check_time();
-        }
-        Err(_) => {}
-    }
-}
-                
-                    ui.label(egui::RichText::new("Option: ").size(15.0));
-                    egui::ComboBox::from_id_salt("time opt").selected_text(&self.time_option).show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.time_option, "1".to_string(),"Hours");
-                        ui.selectable_value(&mut self.time_option, "2".to_string(),"Minutes");
-                        ui.selectable_value(&mut self.time_option, "3".to_string(),"Seconds");
-                        ui.selectable_value(&mut self.time_option, "4".to_string(),"Millis");
-                        ui.selectable_value(&mut self.time_option, "5".to_string(),"Micros");
-                        ui.selectable_value(&mut self.time_option, "6".to_string(),"Nanos");
+                ui.label(egui::RichText::new("Time: ").size(15.0));
+                ui.add(egui::TextEdit::singleline(&mut self.string_time).desired_width(100.0));
+                if ui.button("Confirm").clicked() {
+                    match self.string_time.parse::<u64>() {
+                        Ok(t) => {
+                            self.data.give_time(t);
+                            self.data.check_time();
+                        }
+                        Err(_) => {}
+                    }
+                }
+
+                ui.label(egui::RichText::new("Option Time: ").size(15.0));
+                egui::ComboBox::from_id_salt("time opt")
+                    .selected_text(&self.time_option)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.time_option, "1".to_string(), "Hours");
+                        ui.selectable_value(&mut self.time_option, "2".to_string(), "Minutes");
+                        ui.selectable_value(&mut self.time_option, "3".to_string(), "Seconds");
+                        ui.selectable_value(&mut self.time_option, "4".to_string(), "Millis");
+                        ui.selectable_value(&mut self.time_option, "5".to_string(), "Micros");
+                        ui.selectable_value(&mut self.time_option, "6".to_string(), "Nanos");
                     });
-                
             });
-            
         });
-        // bagian kirim input output
-        
+
+        const KEYBOARD_KEY: &[&str] = &[
+            // Baris angka
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "U",
+            "V",
+            "W",
+            "X",
+            "Y",
+            "Z",
+            // 0-9
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            // Simbol & tanda baca
+            "`",
+            "-",
+            "=",
+            "[",
+            "]",
+            "\\",
+            ";",
+            "'",
+            ",",
+            ".",
+            "/",
+            // Modifier & kontrol
+            "Tab",
+            "CapsLock",
+            "Shift",
+            "Ctrl",
+            "Alt",
+            "Meta",
+            "Space",
+            "Enter",
+            "Backspace",
+            "Escape",
+            // Navigasi
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+            "Home",
+            "End",
+            "PageUp",
+            "PageDown",
+            "Insert",
+            "Delete",
+            // Fungsi
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            // Mouse
+            "Mouse Left",
+            "Mouse Middle",
+            "Mouse Right",
+        ];
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
-                ui.horizontal(|ui|{
+                ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("Input: ").size(18.0));
-                    ui.add(egui::TextEdit::singleline(&mut self.input).desired_width(55.0));
-                    
+                    egui::ComboBox::from_id_salt("input opt")
+                        .selected_text(&self.input)
+                        .show_ui(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .max_height(100.0)
+                                .show(ui, |ui| {
+                                    for key in KEYBOARD_KEY {
+                                        ui.selectable_value(&mut self.input, key.to_string(), *key);
+                                    }
+                                });
+                        });
+                    let i = format!("Output Current: {}", &self.input);
+                    ui.label(i);
                 });
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("Output: ").size(18.0));
-                     ui.add(egui::TextEdit::singleline(&mut self.output).desired_width(55.0));
+                    egui::ComboBox::from_id_salt("output opt")
+                        .selected_text(&self.output)
+                        .show_ui(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .max_height(100.0)
+                                .show(ui, |ui| {
+                                    for key in KEYBOARD_KEY {
+                                        ui.selectable_value(
+                                            &mut self.output,
+                                            key.to_string(),
+                                            *key,
+                                        );
+                                    }
+                                });
+                        });
+                    let o = format!("Output Current: {}", &self.output);
+                    ui.label(o);
                 });
                 if ui.button("Submit").clicked() {
                     self.data.give_data(&self.input, &self.output);
-                    if let Some(check_i) = self.data.get_input() {
-                        println!("Input Status: {:?}", check_i);
+                    let d: Vec<Option<crate::logic::Trigger>> = self.data.get_data_io();
+                    if let (Some(i_data), Some(o_data)) = (&d[0], &d[1]) {
+                        println!("Input Value: {:?}", i_data);
+                        println!("Iutput Value: {:?}", o_data);
                     }
                 }
             });
-            
         });
-        
     }
 }
