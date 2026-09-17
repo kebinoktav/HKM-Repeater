@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::{
     thread,
     time::{Duration, Instant},
@@ -19,8 +19,8 @@ pub(crate) enum Trigger {
 }
 
 pub(crate) struct Data {
-    input: Arc<Mutex<Option<Trigger>>>,
-    output: Arc<Mutex<Option<Trigger>>>,
+    input: Arc<RwLock<Option<Trigger>>>,
+    output: Arc<RwLock<Option<Trigger>>>,
     is_run: Arc<AtomicBool>,
     should_run: Arc<AtomicBool>, // beda dari is_run: ini buat matiin thread total
     time: Arc<AtomicU64>,
@@ -69,8 +69,8 @@ fn execute_trigger(trigger: &Trigger, enigo: &mut Enigo) {
 impl Data {
     pub(crate) fn new() -> Self {
         Data {
-            input: Arc::new(Mutex::new(None)),
-            output: Arc::new(Mutex::new(None)),
+            input: Arc::new(RwLock::new(None)),
+            output: Arc::new(RwLock::new(None)),
             is_run: Arc::new(AtomicBool::new(false)),
             should_run: Arc::new(AtomicBool::new(true)),
             time: Arc::new(AtomicU64::new(0)),
@@ -81,15 +81,15 @@ impl Data {
     pub(crate) fn get_data_io(&self) -> Vec<Option<Trigger>> {
         // data inromasi isi dari sel.input dan self.output
         let data: Vec<Option<Trigger>> = vec![
-            self.input.lock().unwrap().clone(),
-            self.output.lock().unwrap().clone(),
+            self.input.read().unwrap().clone(),
+            self.output.read().unwrap().clone(),
         ];
         data
     }
 
     pub(crate) fn give_data(&self, input: &str, output: &str) {
-        *self.input.lock().unwrap() = parse_data(input);
-        *self.output.lock().unwrap() = parse_data(output);
+        *self.input.write().unwrap() = parse_data(input);
+        *self.output.write().unwrap() = parse_data(output);
     }
 
     pub(crate) fn stop(&self) {
@@ -139,7 +139,7 @@ impl Data {
 
             // SELALU cek input tiap 10ms, nggak peduli is_run atau nggak
             let input_active = {
-                let input = self.input.lock().unwrap();
+                let input = self.input.read().unwrap();
                 match input.as_ref() {
                     Some(trigger) => is_trigger_active(trigger, device_state),
                     None => false,
@@ -154,7 +154,7 @@ impl Data {
             if self.is_run.load(Ordering::SeqCst) {
                 let interval = self.get_interval();
                 if last_execute.elapsed() >= interval {
-                    let output_trigger = self.output.lock().unwrap().clone();
+                    let output_trigger = self.output.read().unwrap().clone();
                     if let Some(trigger) = output_trigger {
                         execute_trigger(&trigger, enigo);
                     }
