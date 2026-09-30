@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
@@ -78,9 +77,11 @@ pub(crate) fn parse_data(data: &str) -> Option<Trigger> {
         // Control
         "Tab" => Some(Trigger::Key(Keycode::Tab)),
         "CapsLock" => Some(Trigger::Key(Keycode::CapsLock)),
-        "Shift" => Some(Trigger::Key(Keycode::LShift)),
+        "L_Shift" => Some(Trigger::Key(Keycode::LShift)),
+        "R_Shift"=> Some(Trigger::Key(Keycode::RShift)),
         "Ctrl" => Some(Trigger::Key(Keycode::LControl)),
-        "Alt" => Some(Trigger::Key(Keycode::LAlt)),
+        "L_Alt" => Some(Trigger::Key(Keycode::LAlt)),
+        "R_Alt" => Some(Trigger::Key(Keycode::RAlt)),
         "Space" => Some(Trigger::Key(Keycode::Space)),
         "Enter" => Some(Trigger::Key(Keycode::Enter)),
         "Backspace" => Some(Trigger::Key(Keycode::Backspace)),
@@ -126,7 +127,6 @@ pub(crate) fn is_trigger_active(trigger: &Trigger, device_state: &DeviceState) -
         Trigger::MouseMiddle => device_state.get_mouse().button_pressed[3],
     }
 }
-
 
 fn execute_trigger(trigger: &Trigger, enigo: &mut Enigo) {
     match trigger {

@@ -1,20 +1,21 @@
 use device_query::DeviceState;
 use enigo::{Enigo, Settings};
 use iced::{
-    Background, Color, Element, widget::{button, column, container, image, pick_list, row, space, text, text_input},
+    Background, Color, Element,
+    widget::{button, column, container, pick_list, row, space, text, text_input},
 };
 use std::thread;
 use std::{sync::Arc, u64};
 
-use crate::{logic::Data};
+use crate::logic::Data;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Choice {
     GiveTimeOpt(String),
     GiveTime(u64),
     GiveInputOutput(),
-    Fill_Input(String),
-    Fill_Output(String),
+    FillInput(String),
+    FillOutput(String),
 }
 
 pub struct Hkm {
@@ -24,13 +25,16 @@ pub struct Hkm {
     time_option: String,
     input: String,
     output: String,
-    theme: Option<[String; 2]>, // [0] = background theme, [1] = text color
+    background: Option<Background>,
+    text_color: Option<Color>,
 }
 
 impl Drop for Hkm {
     fn drop(&mut self) {
         self.data.stop();
-        if let Some(handle) = self.process_thread.take() {}
+        if let Some(handle) = self.process_thread.take() {
+            let _ = handle.join();
+        }
     }
 }
 
@@ -53,7 +57,8 @@ impl Hkm {
             time_option: String::new(),
             input: String::new(),
             output: String::new(),
-            theme : None,
+            background: Some(Background::Color(Color::BLACK)),
+            text_color: Some(Color::WHITE),
         }
     }
 
@@ -70,17 +75,14 @@ impl Hkm {
                 self.data.check_time();
             }
             Choice::GiveInputOutput() => {
-                self.data.give_data(&self.input.as_str(), &self.output.as_str());
+                self.data
+                    .give_data(&self.input.as_str(), &self.output.as_str());
                 let debug = self.data.get_data_io();
                 println!("input: {:?}", debug[0]);
                 println!("output: {:?}", debug[1])
             }
-            Choice::Fill_Input(v) => {
-                self.input = v
-            }
-            Choice::Fill_Output(v) => {
-                self.output = v
-            }
+            Choice::FillInput(v) => self.input = v,
+            Choice::FillOutput(v) => self.output = v,
         }
     }
 
@@ -139,9 +141,11 @@ impl Hkm {
             // Modifier and control keys for advanced trigger combinations.
             "Tab",
             "CapsLock",
-            "Shift",
+            "L_Shift",
+            "R_Shift",
             "Ctrl",
-            "Alt",
+            "L_Alt",
+            "R_Alt",
             "Meta",
             "Space",
             "Enter",
@@ -177,17 +181,14 @@ impl Hkm {
             "Mouse Right",
         ];
         let gui = column![
-            
-            
+            row![
                 text("Time:   "),
                 text_input("Time", &self.string_time.to_string())
                     .on_input(|value| {
                         let parsed = value.parse::<u64>().unwrap_or(0);
                         Choice::GiveTime(parsed)
-
                     })
                     .width(100),
-                space().width(10),
                 text("Time Option: "),
                 pick_list(
                     ["Hours", "Minutes", "Seconds", "Millis", "Micros"],
@@ -198,36 +199,53 @@ impl Hkm {
                     },
                     |val| { Choice::GiveTimeOpt(val.to_string()) }
                 )
-            ,
-            
-                text("Input"),
-                pick_list(KEYBOARD_KEY, if self.input.is_empty(){
-                    None
-                } else {
-                    Some(self.input.as_str())
-                },
-                |val| {Choice::Fill_Input(val.to_string())})
-                ,
-                space().height(10),
-            
-                text("Output"),
-                pick_list(KEYBOARD_KEY, if self.output.is_empty(){
-                    None
-                } else {
-                    Some(self.output.as_str())
-                },
-                |val| {Choice::Fill_Output(val.to_string())}
-            ),
-            button("Submit").on_press(Choice::GiveInputOutput())
-
+            ]
+            .spacing(10),
+            text("Input"),
+            row![
+                pick_list(
+                    KEYBOARD_KEY,
+                    if self.input.is_empty() {
+                        None
+                    } else {
+                        Some(self.input.as_str())
+                    },
+                    |val| { Choice::FillInput(val.to_string()) }
+                ),
+                text(format!("current input: {:?}", self.data.get_data_io().get(0).and_then(|x| {x.as_ref()})))
+                    .color(Color::from_rgb(0.5, 0.5, 0.5))
+            ].spacing(10),
+            space().height(5),
+            text("Output"),
+            row![
+                pick_list(
+                    KEYBOARD_KEY,
+                    if self.output.is_empty() {
+                        None
+                    } else {
+                        Some(self.output.as_str())
+                    },
+                    |val| { Choice::FillOutput(val.to_string()) }
+                ),
+                text(format!("current output: {:?}", self.data.get_data_io().get(1).and_then(|x| {x.as_ref()})))
+                    .color(Color::from_rgb(0.5, 0.5, 0.5))
+            ].spacing(10),
+            space().height(5),
+            button("Submit")
+                .on_press(Choice::GiveInputOutput())
+                .style(|_theme, _status| button::Style {
+                    background: Some(Background::Color(Color::from_rgb8(11, 121, 67))),
+                    text_color: Color::WHITE,
+                    ..Default::default()
+                })
         ];
 
         container(gui)
             .width(iced::Fill)
             .height(iced::Fill)
             .style(|_theme| container::Style {
-                background: Some(Background::Color(Color::BLACK)),
-                text_color: Some(Color::WHITE),
+                background: self.background,
+                text_color: self.text_color,
                 ..Default::default()
             })
             .into()
