@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 enigo = "0.6"
 device_query = "4.0"
-eframe = "0.29.0"
+iced = { version = "0.14", features = ["image"] }
 
 [profile.release]
 opt-level = 3
